@@ -4,11 +4,15 @@
     <logicalFolder name="SourceFiles"
                    displayName="Исходные файлы"
                    projectFiles="true">
+      <itemPath>ProcessingFFmpegToWebSocket.cpp</itemPath>
+      <itemPath>WebServer.cpp</itemPath>
       <itemPath>main.cpp</itemPath>
     </logicalFolder>
     <logicalFolder name="HeaderFiles"
                    displayName="Файлы заголовков"
                    projectFiles="true">
+      <itemPath>ProcessingFFmpegToWebSocket.h</itemPath>
+      <itemPath>WebServer.h</itemPath>
     </logicalFolder>
     <logicalFolder name="ResourceFiles"
                    displayName="Файлы ресурсов"
@@ -44,6 +48,14 @@
           <commandLine>-pthread -lseasocks -lavformat -lavcodec -lavutil -lavdevice -lswscale -lswresample</commandLine>
         </linkerTool>
       </compileType>
+      <item path="ProcessingFFmpegToWebSocket.cpp" ex="false" tool="1" flavor2="0">
+      </item>
+      <item path="ProcessingFFmpegToWebSocket.h" ex="false" tool="3" flavor2="0">
+      </item>
+      <item path="WebServer.cpp" ex="false" tool="1" flavor2="0">
+      </item>
+      <item path="WebServer.h" ex="false" tool="3" flavor2="0">
+      </item>
       <item path="index.html" ex="false" tool="3" flavor2="0">
       </item>
       <item path="main.cpp" ex="false" tool="1" flavor2="0">
@@ -72,6 +84,14 @@
           <developmentMode>5</developmentMode>
         </asmTool>
       </compileType>
+      <item path="ProcessingFFmpegToWebSocket.cpp" ex="false" tool="1" flavor2="0">
+      </item>
+      <item path="ProcessingFFmpegToWebSocket.h" ex="false" tool="3" flavor2="0">
+      </item>
+      <item path="WebServer.cpp" ex="false" tool="1" flavor2="0">
+      </item>
+      <item path="WebServer.h" ex="false" tool="3" flavor2="0">
+      </item>
       <item path="index.html" ex="false" tool="3" flavor2="0">
       </item>
       <item path="main.cpp" ex="false" tool="1" flavor2="0">
