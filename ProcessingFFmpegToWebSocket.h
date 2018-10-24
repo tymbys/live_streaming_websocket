@@ -5,11 +5,17 @@
 extern "C" {
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
+#include <libavformat/avio.h>
 #include <libavdevice/avdevice.h>
 #include <libswscale/swscale.h>
 #include <libavutil/imgutils.h>
 #include <libavutil/log.h>
 #include <unistd.h>
+
+#include <libavutil/pixfmt.h>
+#include <libavutil/imgutils.h>
+#include <sys/time.h>
+
 #endif
 
 #ifdef __cplusplus
@@ -56,7 +62,7 @@ private:
     string out_file;
     int port;
     bool verbose;
-    
+
     string video_size_in;
     string video_size_out;
 };

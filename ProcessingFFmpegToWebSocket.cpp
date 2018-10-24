@@ -1,6 +1,9 @@
 
 #include "ProcessingFFmpegToWebSocket.h"
 
+//#include <libavcodec/vda.h>
+//#include <libavcodec/vdpau.h>
+
 
 //char *input_name = "video4linux2";
 //char *file_name = "/dev/video0";
@@ -10,12 +13,48 @@
 //MyServer *ws_server;
 //shared_ptr<MyHandler> handler;
 
+struct IMovimg_AVG {
+    //IMovimg_AVG(){};
+    //IMovimg_AVG(int * buff, size_t window): window(window),start_index(window), avg_buff(buff){};
+
+#define window 5
+
+
+    const size_t avg_window = window;
+    int avg_buff[window];
+    size_t position = 0;
+    size_t start_index = window;
+
+    int processing(int val) {
+        int data_out = 0;
+
+        if (start_index > 0) start_index--;
+        if (position >= window) position = 0;
+        avg_buff[position] = val;
+
+        if (start_index == 0) {
+
+            for (size_t i = 0; i < window; i++)
+                data_out += avg_buff[i];
+
+            data_out = data_out / window;
+
+        }
+
+
+        return data_out;
+    };
+
+};
+
+IMovimg_AVG moving_avg;
+
 Processing::Processing() {
     cb64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
     input_name = "video4linux2";
     file_name = "/dev/video0";
     out_file = "out.jpg";
-    
+
     video_size_in = "640x480";
 }
 
@@ -80,6 +119,18 @@ void Processing::InitServer() {
 
 }
 
+typedef struct Timestamp {
+    int seconds;
+    int useconds;
+} Timestamp;
+
+void get_current_time(Timestamp* timestamp) {
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    timestamp->seconds = (int) (tv.tv_sec);
+    timestamp->useconds = (int) (tv.tv_usec);
+}
+
 int Processing::ProcessingFFmpegToWebSocket() {
 
     AVFormatContext *fmtCtx = NULL;
@@ -141,6 +192,11 @@ int Processing::ProcessingFFmpegToWebSocket() {
     //const char *videosize1 = "640x480";
     AVDictionary *option = NULL;
     av_dict_set(&option, "video_size", video_size_in.c_str(), 0);
+    //av_dict_set(&option, "flush_packets", "0", 0);
+
+    //fmtCtx->flush_packets =0;
+
+
 
     if (avformat_open_input(&fmtCtx, file_name.c_str(), inputFmt, &option) < 0) {
         std::cout << "can not open input file." << std::endl;
@@ -168,7 +224,7 @@ int Processing::ProcessingFFmpegToWebSocket() {
 
     std::cout << "origin pix_fmt " << pCodecCtx->pix_fmt << std::endl;
     sws_ctx = sws_getContext(pCodecCtx->width, pCodecCtx->height, pCodecCtx->pix_fmt
-            , dst_w, dst_h, dst_pix_fmt, SWS_BILINEAR, NULL, NULL, NULL);
+            , dst_w, dst_h, dst_pix_fmt, SWS_FAST_BILINEAR/*SWS_BILINEAR*/, NULL, NULL, NULL);
 
     src_bufsize = av_image_alloc(src_data, src_linesize, pCodecCtx->width, pCodecCtx->height
             , pCodecCtx->pix_fmt, 16);
@@ -206,6 +262,10 @@ int Processing::ProcessingFFmpegToWebSocket() {
         return -1;
     }
 
+
+
+
+
     pAVCodecCtx = pOStream->codec;
     pAVCodecCtx->codec_id = pOutFormat->video_codec;
     pAVCodecCtx->codec_type = AVMEDIA_TYPE_VIDEO;
@@ -214,6 +274,31 @@ int Processing::ProcessingFFmpegToWebSocket() {
     pAVCodecCtx->height = dst_h;
     pAVCodecCtx->time_base.num = 1;
     pAVCodecCtx->time_base.den = 25;
+    //pAVCodecCtx->flags2 |= AV_CODEC_FLAG2_DROP_FRAME_TIMECODE; //FASTPSKIP;
+
+
+
+    //    pAVCodecCtx->gop_size = 12;
+    //    pAVCodecCtx->bit_rate_tolerance = 0;
+    //    pAVCodecCtx->rc_max_rate = 0;
+    //   pAVCodecCtx->rc_buffer_size = 0;
+    //    pAVCodecCtx->gop_size = 5;
+    //    pAVCodecCtx->max_b_frames = 0;
+    //    pAVCodecCtx->b_frame_strategy = 1;
+    //    pAVCodecCtx->coder_type = 1;
+    //    pAVCodecCtx->me_cmp = 1;
+    //    pAVCodecCtx->me_range = 16;
+    //    pAVCodecCtx->qmin = 10;
+    //    pAVCodecCtx->qmax = 51;
+    //    pAVCodecCtx->scenechange_threshold = 40;
+    //    //c->flags |= CODEC_FLAG_LOOP_FILTER;
+    //    pAVCodecCtx->me_method = ME_HEX;
+    //    pAVCodecCtx->me_subpel_quality = 5;
+    //    pAVCodecCtx->i_quant_factor = 0.71;
+    //    pAVCodecCtx->qcompress = 0.6;
+    //pAVCodecCtx->max_qdiff = 4;
+
+
 
     std::cout << "out codec id " << pAVCodecCtx->codec_id << std::endl;
 
@@ -223,10 +308,30 @@ int Processing::ProcessingFFmpegToWebSocket() {
         return -1;
     }
 
+
+    pAVCodecCtx->thread_count = 8;
+    pAVCodecCtx->thread_type = FF_THREAD_SLICE;
+
+    //pAVCodecCtx->flags |= AV_CODEC_FLAG_TRUNCATED; //  ;AV_CODEC_CAP_FRAME_THREADS
+
+    //pAVcodec->capabilities |= AV_CODEC_CAP_FRAME_THREADS;
+
+    av_opt_set(pAVCodecCtx->priv_data, "preset", "ultrafast", 0);
+    av_opt_set(pAVCodecCtx->priv_data, "tune", "zerolatency", 0);
+    //av_dict_set(pAVCodecCtx->opts, "preset","ultrafast",0);
+
+
+
+
+    //pAVCodecCtx->coded_frame->
+
+    //pAVCodecCtx->skip_top=30;          
     if (avcodec_open2(pAVCodecCtx, pAVcodec, NULL) < 0) {
         std::cout << "avcodec open failed. " << std::endl;
         return -1;
     }
+
+    pAVcodec->capabilities |= AV_CODEC_CAP_FRAME_THREADS;
 
     int size = avpicture_get_size(pAVCodecCtx->pix_fmt, pAVCodecCtx->width, pAVCodecCtx->height);
     std::cout << "size " << size << std::endl;
@@ -245,39 +350,101 @@ int Processing::ProcessingFFmpegToWebSocket() {
 
     int64_t num_frame = 0;
     string out = "";
-    while (av_read_frame(fmtCtx, packet) >= 0) {
 
-        if (verbose) {
+    //fmtCtx->max_delay = 0;
 
-            uint64_t now = duration_cast<microseconds>(system_clock::now().time_since_epoch()).count();
-            double diff = (double) 1000000 / (double) (now - old_time);
+    ret = 0;
+    int64_t timeBase = (int64_t(pCodecCtx->time_base.num) * AV_TIME_BASE) / int64_t(pCodecCtx->time_base.den);
+    int64_t stream_start_time;
+    Timestamp timestamp_prec, timestamp_curr;
+    int64_t pkt_ts, cur;
 
-            std::cout << "Is read FPS:  " << diff << std::endl;
-            std::cout << "in save jpeg packet size " << packet->size << std::endl;
-            old_time = now;
+    int avg = 0;
+    int diff_round = 0;
+    int start_position = 5;
+
+    int fps_max = 0;
+
+    int64_t curent_index = 0;
+    int count_skip = 0;
+
+    bool isEncode = false;
+    uint64_t now;
+    int diff;
+
+    int fps_from_info = fmtCtx->streams[packet->stream_index]->r_frame_rate.num;
+    int scip_frame =0;
+    
+    std::cout << "fps_from_info:  " << fps_from_info << std::endl;
+    cout << "pAVCodecCtx->thread_count: " << pAVCodecCtx->thread_count << endl;
+
+    //while (av_read_frame(fmtCtx, packet) >= 0) {
+    while (1) {
+        ret = av_read_frame(fmtCtx, packet);
+        curent_index++;
+
+        //uint64_t now = duration_cast<microseconds>(system_clock::now().time_since_epoch()).count();
+        //double diff = (double) 1000000 / (double) (now - old_time);
+
+        now = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
+        diff = 1000 / (now - old_time);
+        old_time = now;
+
+
+
+        if ((start_position > 0) && (curent_index > 30)) {
+            start_position--;
+
+            avg += diff;
 
         }
 
+        
+        if (fps_max!=0) scip_frame = fps_from_info/fps_max;
+        
+        if (start_position == 0) {
+            fps_max = avg / moving_avg.avg_window;
+            start_position = moving_avg.avg_window;
+            avg = 0;
+            scip_frame =0; //!!!!
+        }
+
+        //std::cout << "start_position:  " << start_position << std::endl;
+        std::cout << "fps_max:  " << fps_max << std::endl;
+        
+        
+
+        if (verbose) {
+            //diff = avg.processing(diff);
+            std::cout << "Is read FPS:  " << diff 
+                    << ",  scip_frame: "<< scip_frame<< std::endl;
+        }
+        
+        //        stream_start_time = fmtCtx->streams[packet->stream_index]->start_time;
+        //        pkt_ts = packet->pts == AV_NOPTS_VALUE ? packet->dts : packet->pts;
+        //        //cur = fmtCtx->streams[packet->stream_index]->cur_dts;
+        //        cur = fmtCtx->streams[packet->stream_index]->skip_samples = 15;
+
+
         memcpy(src_data[0], packet->data, packet->size);
+
+
         sws_scale(sws_ctx, src_data, src_linesize, 0, pCodecCtx->height, dst_data, dst_linesize);
+        //sws_scale(sws_ctx, (const uint8_t **)packet->data, src_linesize, 0, pCodecCtx->height, dst_data, dst_linesize);
+
+        //avpicture_fill((AVPicture *) pFrame, dst_data[0], pAVCodecCtx->pix_fmt, pAVCodecCtx->width, pAVCodecCtx->height);
+        av_image_fill_arrays(pFrame->data, pFrame->linesize, dst_data[0], pAVCodecCtx->pix_fmt, pAVCodecCtx->width, pAVCodecCtx->height, 1);
 
 
+//        pAVCodecCtx->qmin = pAVCodecCtx->qmax = 3;
+//        pAVCodecCtx->mb_lmin = pAVCodecCtx->lmin = pAVCodecCtx->qmin * FF_QP2LAMBDA;
+//        pAVCodecCtx->mb_lmax = pAVCodecCtx->lmax = pAVCodecCtx->qmax * FF_QP2LAMBDA;
+//        pAVCodecCtx->flags |= CODEC_FLAG_QSCALE;
 
-        //std::cout << "in save jpeg packet size " << packet->size << std::endl;
+//        pFrame->quality = 4;
+        //pFrame->pts = ++i;
 
-
-        avpicture_fill((AVPicture *) pFrame, dst_data[0], pAVCodecCtx->pix_fmt, pAVCodecCtx->width, pAVCodecCtx->height);
-
-
-        pAVCodecCtx->qmin = pAVCodecCtx->qmax = 3;
-        pAVCodecCtx->mb_lmin = pAVCodecCtx->lmin = pAVCodecCtx->qmin * FF_QP2LAMBDA;
-        pAVCodecCtx->mb_lmax = pAVCodecCtx->lmax = pAVCodecCtx->qmax * FF_QP2LAMBDA;
-        pAVCodecCtx->flags |= CODEC_FLAG_QSCALE;
-
-        pFrame->quality = 4;
-        pFrame->pts = ++i;
-
-        avformat_write_header(pFormatCtx, NULL);
+//        avformat_write_header(pFormatCtx, NULL);
 
 
         AVPacket pkt = {0};
@@ -288,39 +455,14 @@ int Processing::ProcessingFFmpegToWebSocket() {
         //Encode  
         ret = avcodec_encode_video2(pAVCodecCtx, &pkt, pFrame, &got_picture);
 
+        //ret = 0;
+        //pAVCodecCtx->execute2
 
         if (ret < 0) {
             printf("Encode Error.\n");
             return -1;
         }
-        //        if (got_picture == 1) {
-        //            pkt.stream_index = pOStream->index;
-        //            ret = av_write_frame(pFormatCtx, &pkt);
-        //        }
-
-        //        av_free_packet(&pkt);
-
-        //Write Trailer  
-        //  av_write_trailer(pFormatCtx); 
-
-
-
-        //        if (i < 2) {
-        //            /* Write JPEG to file */
-        //            char buf[32] = {0};
-        //            snprintf(buf, 30, "fram%d.jpeg", i);
-        //            FILE *fdJPEG = fopen(buf, "wb");
-        //            int bRet = fwrite(pkt.data, sizeof(uint8_t), pkt.size, fdJPEG);
-        //            fclose(fdJPEG);
-        //
-        //            if (bRet <= 0) {
-        //                fprintf(stderr, "Error writing jpeg file\n");
-        //                return 1;
-        //            } else
-        //                fprintf(stderr, "jpeg file was writed\n");
-        //        }
-        //        else
-        //            break;
+        
 
         out = base64Encode((const void*) &pkt.data[0], pkt.size);
 
@@ -331,16 +473,19 @@ int Processing::ProcessingFFmpegToWebSocket() {
         //sleep(1);
         //handler->setCanvas(&pkt.data[0], pkt.size);
 
-
-        //cout << "!!!!!!!!: " << out.length() << endl;
-
-        //        for(int p=0; p<10; p++){
-        //            printf("0X%02X ", pkt.data[p]);
-        //        }
-
+        
         av_free_packet(&pkt);
-
         av_free_packet(packet);
+        for(i=0; i<scip_frame; i++){
+            ret = av_read_frame(fmtCtx, packet);
+            av_free_packet(packet);
+            
+        }
+
+        
+
+        
+        //av_free(pFrame);
 
     }
 
