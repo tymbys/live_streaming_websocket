@@ -316,7 +316,7 @@ int Processing::ProcessingFFmpegToWebSocket() {
 
     pAVCodecCtx->thread_count = 4;
     pAVCodecCtx->thread_type = FF_THREAD_SLICE;
-    pAVCodecCtx->compression_level =1000;//frame_bits = 12;
+    //pAVCodecCtx->compression_level =1000;//frame_bits = 12;
 
 
 
@@ -442,10 +442,10 @@ int Processing::ProcessingFFmpegToWebSocket() {
         av_image_fill_arrays(pFrame->data, pFrame->linesize, dst_data[0], pAVCodecCtx->pix_fmt, pAVCodecCtx->width, pAVCodecCtx->height, 1);
 
 
-        //        pAVCodecCtx->qmin = pAVCodecCtx->qmax = 3;
-        //        pAVCodecCtx->mb_lmin = pAVCodecCtx->lmin = pAVCodecCtx->qmin * FF_QP2LAMBDA;
-        //        pAVCodecCtx->mb_lmax = pAVCodecCtx->lmax = pAVCodecCtx->qmax * FF_QP2LAMBDA;
-        //        pAVCodecCtx->flags |= CODEC_FLAG_QSCALE;
+        pAVCodecCtx->qmin = pAVCodecCtx->qmax = 3;
+        pAVCodecCtx->mb_lmin = pAVCodecCtx->lmin = pAVCodecCtx->qmin * FF_QP2LAMBDA;
+        pAVCodecCtx->mb_lmax = pAVCodecCtx->lmax = pAVCodecCtx->qmax * FF_QP2LAMBDA;
+        pAVCodecCtx->flags |= CODEC_FLAG_QSCALE;
 
         //        pFrame->quality = 4;
         //pFrame->pts = ++i;

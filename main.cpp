@@ -18,8 +18,8 @@ int main(int argc, char** argv) {
 
     int port = 9090;
     bool is_verbose = false;
-    string dev = "/dev/video2";
-    bool is_skip_frame = false;
+    string dev = "/dev/video0";
+    bool is_skip_frame = true;
 
     int w_in = 640;
     int h_in = 480;
