@@ -17,8 +17,9 @@ int main(int argc, char** argv) {
     int opt;
 
     int port = 9090;
-    bool verbose = false;
-    string dev = "/dev/video0";
+    bool is_verbose = false;
+    string dev = "/dev/video2";
+    bool is_skip_frame = false;
 
     int w_in = 640;
     int h_in = 480;
@@ -27,13 +28,17 @@ int main(int argc, char** argv) {
 
     while ((opt = getopt(argc, argv, "vpd:")) != -1) {
         switch (opt) {
-            case 'v': verbose = true;
+            case 'v': is_verbose = true;
                 break;
             case 'p': port = atoi(optarg);
                 break;
             case 'd':
                 dev = optarg;
                 break;
+            case 's':
+                is_skip_frame = true;
+                break;
+                
             default:
                 fprintf(stderr, usage, argv[0]);
 
@@ -47,10 +52,16 @@ int main(int argc, char** argv) {
 
 
     Processing processing;
+    
+    std::cout << "!!!!!!!!!!!!!!!is_verbose: " << is_verbose << std::endl;
+    std::cout << "!!!!!!!!!!!!!!!port: " << port << std::endl;
+    std::cout << "!!!!!!!!!!!!!!!dev: " << dev << std::endl;
+    std::cout << "!!!!!!!!!!!!!!!is_skip_frame: " << is_skip_frame << std::endl;
 
     processing.SetPort(port);
-    processing.SetVerbose(verbose);
+    processing.SetVerbose(is_verbose);    
     processing.SetVideo(dev);
+    processing.SetSkipFrame(is_skip_frame);
 
 
     processing.ProcessingFFmpegToWebSocket();

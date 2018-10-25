@@ -46,6 +46,7 @@ public:
     void SetPort(int port);
     void SetVideo(string dev);
     void SetVideoSize_in(string video_size);
+    void SetSkipFrame(bool v);
 
 private:
     //const char cb64[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
@@ -62,6 +63,7 @@ private:
     string out_file;
     int port;
     bool verbose;
+    bool is_skip_frame;
 
     string video_size_in;
     string video_size_out;
