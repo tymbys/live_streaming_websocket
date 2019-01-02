@@ -1,5 +1,7 @@
 #include "ProcessingFFmpegToWebSocket.h"
 
+extern char *optarg;
+
 const char usage[] = "Usage: %s [-d video] [-p PORT] [-v] DIR\n"
         "   Serves files from DIR over HTTP on port PORT\n";
 
@@ -19,18 +21,19 @@ int main(int argc, char** argv) {
     int port = 9090;
     bool is_verbose = false;
     string dev = "/dev/video0";
-    bool is_skip_frame = true;
+    bool is_skip_frame = false;
 
     int w_in = 640;
     int h_in = 480;
     int w_out = 640;
     int h_out = 480;
 
-    while ((opt = getopt(argc, argv, "vpd:")) != -1) {
+    while ((opt = getopt(argc, argv, "vp:d:")) != -1) {
         switch (opt) {
             case 'v': is_verbose = true;
                 break;
-            case 'p': port = atoi(optarg);
+            case 'p':                
+                port = atoi(optarg);
                 break;
             case 'd':
                 dev = optarg;
